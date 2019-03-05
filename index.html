@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+  <link rel="stylesheet" href="style.css">
+  <style>
+      html,body{margin: 0; background: #fff; overflow: hidden; }
+      div.table{ border-top: solid 1px #99f; width: 100%; display: block; background: #fff; overflow: scroll; }
+      #div_header,#div_price{ overflow: hidden; }
+      #div_table{ height: 130px; }
+      table{ width: 700pt; text-align: center; }
+      th, td{font-size: 12pt; width: 100pt; }
+      td{ font-size: 9pt; }
+      #div_price td{ color: red; }
+
+      .btn-delete img{ width: 10pt; height: 10pt;}
+      .btn-delete{ display: inline-block; padding: 0;}
+
+      span img{ width: 11pt; height: 11pt; margin-bottom: -2pt;}
+
+      .menu-group-wrap{ display: block; height: 240px; overflow: scroll; }
+      .menu-group{ background-color: #fff; }
+      .menu-group-title{ font-size: 12pt; color: #c04851; border-top: solid 1px #c04851; border-bottom: solid 1px #c04851; padding: 10px; font-weight: bold; }
+      .menu-group-item{ padding: 5px; color: #333; font-size: 10pt; }
+  </style>
+</head>
+<body>
+    <!-- http://mint-ui.github.io/docs/#/zh-cn2 -->
+  <div id="app">
+    <div id="div_header" class="table">
+        <table>
+            <tr>
+                <th v-for="item in table.th">{{ item }}</th>
+            </tr>
+        </table>
+    </div>
+    <div id="div_price" class="table">
+        <table>
+            <tr>
+                <td v-for="item in table.price">总价: ￥{{ item }}</td>
+            </tr>
+        </table>
+    </div>
+    <div id="div_table" class="table">
+        <table id="menu_table">
+            <tr v-for="td in table.tr">
+                <td v-for="item in td">{{ item.split("_")[0] }}
+                    <button :id="item.split('_')[1]+'_'+item.split('_')[2]+'_'+item.split('_')[3]" v-if="item!='-'" onclick="deleteItem(this.id)" class="btn-delete"><img src="icon_delete.png" /></button>
+              </td>
+            </tr>
+        </table>
+    </div>
+    <div id="menu_group_wrap" class="menu-group-wrap">
+      <div class="menu-group" v-for="(mt, gid) in menus">
+          <div class="menu-group-title">{{ mt.name }}</div>
+          <div class="menu-group-item" v-for="(item, index) in mt.items">
+            <span v-if="!item[3]">
+                <input v-on:click="addToOrder" class="mini-checkbox" value="+" type="button" :id="(gid+1)*10000+(index+1)*100"/><label :for="(gid+1)*10000+(index+1)*100">{{ item[0] }}</label>
+            </span>
+            <span v-if="item[3]">{{ item[0] }}</span>
+            {{ item[1] }}元
+            <span v-if="item[2]">
+                <span v-for="id in item[2]">
+                  <img src="spicy.png" />
+                </span>
+            </span>
+            <span v-if="item[3]">
+              <span v-for="(type, tid) in item[3]">
+                  <input  v-on:click="addToOrder" class="mini-checkbox" value="+" type="button" :id="(gid+1)*10000+(index+1)*100+(tid+1)"/><label :for="(gid+1)*10000+(index+1)*100+(tid+1)">{{ type }}</label>
+              </span>
+            </span>
+          </div>
+      </div>
+    </div>
+    <mt-button @click.native="handleClick">导出CSV表格</mt-button>
+    <mt-actionsheet :actions="addActions" v-model="sheetVisible"></mt-actionsheet></mt-actionsheet>
+  </div>
+</body>
+  <script src="FileSaver.min.js"></script>
+  <script src="vue.js"></script>
+  <script src="index.js"></script>
+  <script>
+    var selectItemId = null;
+    //名称，价格，辣度，选项
+    let MENUS =[
+        {
+          name:"五味家常菜",
+          items:[//五味家常菜
+            ["川香铁板大肠","42", 1],
+            ["山药木耳肉片","26"],
+            ["爆炒猪耳片","32", 1],
+            ["凤尾腰花","36"],
+            ["椒盐排条","32"],
+            ["红烧猪手","39"],
+            ["酱爆腰花","36"],
+            ["糖醋排条","32"],
+            ["蛋黄锅巴","32"],
+            ["土匪猪肝","32"],
+            ["蒜苔腊肉","29"],
+            ["辣子猪手","42", 1],
+            ["泡椒鸡珍","32"],
+            ["肉末粉丝煲","29", 1],
+            ["双笋仔兔煲","49"],
+            ["香辣螺丝","22"],
+            ["干豆角炒五花肉", 32],
+            ["家乡回锅肉","32"],
+            ["农家小炒肉","32", 2],
+            ["重庆辣子鸡","39", 2],
+            ["老姜炒子鸡","39"],
+            ["攸县香干","19"],
+            ["麻婆豆腐","16"],
+            ["七彩松茸菌","29"],
+            ["清炒棱角米","29"],
+            ["莲子扣","29"],
+            ["咸蛋黄茶树菇","26"],
+            ["松仁玉米","26"],
+            ["番茄炒蛋","19"],
+            ["小葱蛋饼","22"],
+            ["外婆菜炒蛋","26"],
+            ["腌脆椒炒蛋","22"],
+            ["上汤娃娃菜","22"],
+            ["上汤西兰花","22"],
+          ]
+        },
+        {
+          name:"蒸汁食味",
+          items: [//蒸汁食味
+            ["鱼头","59","", ["剁椒", "双色"]],
+            ["农家扣肉","39"],
+            ["肉末炖蛋","26"],
+            ["农家粉蒸肉","39"],
+            ["鸦片鱼头","69", "", ["清蒸", "剁椒"]],
+            ["五谷东坡肉","49"],
+          ]
+        },
+        {
+          name:"鲜匠鲜蔬",
+          items: [//鲜匠鲜蔬
+              ["响油芦笋","26"],
+              ["干煸四季豆","19"],
+              ["鱼香茄子","19"],
+              ["红烧茄子","19"],
+              ["刀豆土豆","16"],
+              ["清炒苦瓜","16"],
+              ["酸辣土豆丝","16"],
+              ["青椒土豆丝","16"],
+              ["地三鲜","16"],
+              ["香菇青菜","16"],
+              ["时令鲜蔬","16"],
+              ["白灼秋葵","22"],
+            ]
+        },
+        {
+          name: "营养汤羹",
+          items: [//营养汤羹
+            ["蛤蜊豆腐汤","22"],
+            ["玉米排骨汤","29"],
+            ["西湖牛肉羹","19"],
+            ["香菜肉丝豆腐羹","16"],
+            ["酸辣汤","16"],
+            ["鱼头豆腐汤","59"],
+            ["鲫鱼豆腐汤","39"],
+            ["番茄蛋汤","16"],
+            ["酒酿圆子","22"],
+          ]
+        },
+        {
+          name: "点点心意",
+          items: [//点点心意
+            ["家乡菜炒饭","18"],
+            ["虾仁扬州炒饭","22"],
+            ["排挡炒面","19"],
+            ["特色牛肉炒饭","22"],
+            ["农家窝窝头","29"],
+            ["珍珠丸子","19"],
+            ["红糖糍粑","22"],
+            ["奶香馒头","18"],
+            ["黄金玉米烙","22"],
+            ["南瓜饼","18"],
+            ["金丝香芋卷","26"],
+            ["拔丝年糕","18"],
+            ["娘惹山药","22"],  
+          ]
+        },
+        { 
+          name:"精致煎菜",
+          items:[//精致煎菜
+            ["鸭唇","38", 2, ["香辣", "秘制"]],
+            ["香辣鸭掌","38", 2],
+            ["泡椒鱼皮","38", 1],
+            ["甘蔗苗","22"],
+            ["醉蟹钳","28"],
+            ["鼎汤素鲍鱼","22"],
+            ["秘制鹅肝","32"],
+            ["蜜汁鹅肝","32"],
+            ["虫草花","22"],
+            ["香拌牛腱","38", 1],
+            ["香辣牛蹄筋","38", 1],
+            ["椒麻土鸡爪","38", 1],
+            ["红油猪耳","32", 1],
+            ["重庆口水鸡","36", 1],
+            ["擂辣椒皮蛋","22", 1],
+            ["皮蛋豆腐","16"],
+            ["酸辣蕨根粉","19", 1],
+            ["凉拌木耳","19"],
+            ["刀拍黄瓜","12"],
+            ["折耳根","16", 1],
+            ["金针菇拌肚丝","26"],
+            ["花生米","12"],
+          ]
+        },
+        {
+          name:"精选川菜",
+          items:[
+            ["牛蛙","46", 2, ["馋嘴", "鲜椒", "干煸"]],
+            ["水煮牛肉","46", 2],
+            ["酸菜黑鱼片","49", 2],
+            ["酸汤肥牛","42", 1],
+            ["鲜花椒黑鱼片","49", 2],
+            ["重庆毛血旺","46", 2],
+          ]
+        },
+        {
+          name: "匠心美食",
+          items:[
+            ["红烧散养土公鸡","129", 1],
+            ["金牌牛肋骨","129"],
+            ["菊花松子鲈鱼","59"],
+            ["川久蒸全鸭","59"],
+            ["手抓扇子骨","69"],
+            ["爆炒个性三脆","36"],
+            ["川香下饭舌片","36"],
+            ["宫爆虾球","59"],
+            ["糖醋小排","49"],
+            ["海鲜面疙瘩","36"],
+            ["土家干豆角烧肉","49"],
+            ["铁板鱿鱼须","49"],
+            ["小炒黄牛肉","39", 1],
+            ["秘制蒜香骨","49"],
+            ["特色鲜锅兔","59", 1],
+            ["爆炒鲜椒兔","46"],
+            ["腌肉烧鳝片","69"],
+            ["水晶虾仁","79"],
+            ["山药炒虾仁","49"],
+            ["私房尖椒拆骨肉","32", 1],
+            ["红烧坨坨羊肉","69"],
+            ["山芋焖草鸭","69"],
+            ["脆皮咸蹄膀","59"],
+            ["黑椒牛仔骨","62"],
+          ]
+        },
+        {
+          name: "特色干锅",
+          items:[
+            ["特色干锅飘香去骨鸭掌","59", 2],
+            ["特色干锅黄牛肉","59", 1],
+            ["特色干锅虾","59", 1],
+            ["特色干锅牛蛙","49", 1],
+            ["特色干锅手撕鸡","42", 1],
+            ["特色干锅大肠", "49", 1],
+            ["特色干锅手撕包菜","32", 1],
+            ["特色干锅千叶豆腐","32", 1],
+            ["排骨土豆豆角", "42"],
+            ["特色干锅土豆片","32", 1],
+          ]
+        },
+        {
+          name: "平价小海鲜",
+          items: [
+            ["蒜茸扇贝","8", "", []],
+            ["带鱼", "38", "", ["清蒸", "红烧", "干煎"]],
+            ["野生生蚝清蒸","38", "", []],
+            ["皮皮虾", "88", "", ["椒盐", "白灼", "香辣"]],
+            ["野生雪龙鱼", "68", "", ["清蒸", "干烧", "酱烧"]],
+            ["白水鱼", "48", "", ["清蒸", "干烧"]],
+            ["花蛤", "32", "", ["葱油", "香辣"]],
+            ["小河虾", "58", "", ["盐水", "酱油", "香辣"]],
+            ["巧烧大黄鱼", "58", "", ["清蒸", "雪菜"]],
+            ["基围虾", "58", "", ["香辣", "盐水", "油焖"]],
+          ]
+        },
+      ];
+
+    //删除某个菜
+    function deleteItem(btn_id){
+      var arr = btn_id.split("_");
+      var row = parseInt(arr[0]);
+      var day = parseInt(arr[1]);
+      var id = parseInt(arr[2]);
+
+      let group_id = parseInt(id/10000);
+      let item_id = parseInt((id%10000)/100);
+      let type_id = (id%10000)%100;
+
+      //清空数据
+      Vue.set(vue.$data.table.tr[row], day, '-');
+      // vue.$data.table.tr[row][day] = '-';
+      //减去价格
+      Vue.set(vue.$data.table.price, day, vue.$data.table.price[day] - parseInt(MENUS[group_id-1].items[item_id-1][1]));
+      // vue.$data.table.price[day] =  vue.$data.table.price[day] - parseInt(MENUS[group_id-1].items[item_id-1][1]);
+    }
+
+    function addItemToOrder(day){
+      let group_id = parseInt(selectItemId/10000);
+      let item_id = parseInt((selectItemId%10000)/100);
+      let type_id = (selectItemId%10000)%100;
+      // console.log("addToOrder group_id="+group_id+",item_id="+item_id+",type_id="+type_id, event.target.checked);
+      // console.log("addToOrder group_id="+MENUS[group_id-1].name+",item_id="+MENUS[group_id-1].items[item_id-1][0]);
+      var type_name = null;
+      if(type_id>0){
+        type_name = MENUS[group_id-1].items[item_id-1][3][type_id-1];
+      }
+      var added = false;
+      var total_price = 0;//计算总价
+      for(var i=0; i<15; i++){
+        if(vue.$data.table.tr[i][day] == '-'){
+          added = true;
+          //最后拼接 行、列、id
+          vue.$data.table.tr[i][day] = MENUS[group_id-1].items[item_id-1][0]+"￥"+MENUS[group_id-1].items[item_id-1][1]+(type_name!=null?"("+type_name+")":"")+"_"+i+"_"+day+"_"+selectItemId;
+          break;
+        }
+      }
+      for(var i=0; i<15; i++){
+        var item = vue.$data.table.tr[i][day];
+        if(item != '-'){
+          var id = parseInt(item.split('_')[3]);
+          let group_id = parseInt(id/10000);
+          let item_id = parseInt((id%10000)/100);
+          let type_id = (id%10000)%100;
+          total_price += parseInt(MENUS[group_id-1].items[item_id-1][1]);
+        }
+      }
+      vue.$data.table.price[day] = total_price;
+      if(!added){
+        vue.$toast('当天菜单已填满')
+      }
+    }
+
+    var vue = new Vue({
+      el: '#app',
+      mounted: function(){
+
+      },
+      data: {
+        menus: MENUS,
+        typeName: MENUS[0].name,
+        sheetVisible: false,
+        addActions: [
+          {name:"星期一", method: function(){  addItemToOrder(0); }},
+          {name:"星期二", method: function(){  addItemToOrder(1); }},
+          {name:"星期三", method: function(){  addItemToOrder(2); }},
+          {name:"星期四", method: function(){  addItemToOrder(3); }},
+          {name:"星期五", method: function(){  addItemToOrder(4); }},
+          {name:"星期六", method: function(){  addItemToOrder(5); }},
+          {name:"星期日", method: function(){  addItemToOrder(6); }},
+        ],
+        table:{
+            th: ["星期一", "星期二", "星期三", "星期四","星期五", "星期六","星期日"],
+            price: [0, 0 , 0, 0, 0, 0, 0],
+            tr: [
+              ["-", "-", "-", "-", "-", "-", "-"],
+              ["-", "-", "-", "-", "-", "-", "-"],
+              ["-", "-", "-", "-", "-", "-", "-"],
+              ["-", "-", "-", "-", "-", "-", "-"],
+              ["-", "-", "-", "-", "-", "-", "-"],
+              ["-", "-", "-", "-", "-", "-", "-"],
+              ["-", "-", "-", "-", "-", "-", "-"],
+              ["-", "-", "-", "-", "-", "-", "-"],
+              ["-", "-", "-", "-", "-", "-", "-"],
+              ["-", "-", "-", "-", "-", "-", "-"],
+              ["-", "-", "-", "-", "-", "-", "-"],
+              ["-", "-", "-", "-", "-", "-", "-"],
+              ["-", "-", "-", "-", "-", "-", "-"],
+              ["-", "-", "-", "-", "-", "-", "-"],
+              ["-", "-", "-", "-", "-", "-", "-"],
+            ]
+        }
+    },
+      methods: {
+        addToOrder: function(event){
+          //记录选择的id
+          selectItemId = event.target.id;
+          this.$data.sheetVisible = true;
+        },
+        handleClick: function() {
+          var content = "星期一,星期二,星期三,星期四,星期五,星期六,星期日\n";
+          for(var i=0; i<15; i++){
+            var line = "";
+            var item = vue.$data.table.tr[i];
+            for(var col=0; col<item.length; col++){
+              var name = vue.$data.table.tr[i][col].split("_")[0].split('￥')[0];
+              line += (name=='-'?'':name)+","
+            }
+            line += "\n";
+            if(line != ',,,,,,,\n')
+            content += line;
+          }
+          
+          //更新每一行的价格
+          for(var day=0;day<7; day++){
+            var total_price = 0;
+            for(var i=0; i<15; i++){
+              var item = vue.$data.table.tr[i][day];
+              if(item != '-'){
+                var id = parseInt(item.split('_')[3]);
+                let group_id = parseInt(id/10000);
+                let item_id = parseInt((id%10000)/100);
+                let type_id = (id%10000)%100;
+                total_price += parseInt(MENUS[group_id-1].items[item_id-1][1]);
+              }
+            }
+            content += total_price+',';
+          }
+
+          // console.log("content", content);
+
+          var blob = new Blob([content], {type: "text/plain;charset=utf-8"});
+          saveAs(blob, "menu.csv");
+        }
+      }
+    });
+
+    document.getElementById("div_table").onscroll = function(e){
+        document.getElementById("div_header").scrollLeft = this.scrollLeft;
+        document.getElementById("div_price").scrollLeft = this.scrollLeft;
+    };
+  </script>
+</html>
