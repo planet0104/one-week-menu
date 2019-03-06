@@ -54,7 +54,7 @@
     <div id="menu_group_wrap" class="menu-group-wrap">
       <div class="menu-group" v-for="(mt, gid) in menus">
           <div class="menu-group-title">{{ mt.name }}</div>
-          <div class="menu-group-item" v-for="(item, index) in mt.items">
+          <div class="menu-group-item" :id="(gid+1)*10000+(index+1)*100" v-for="(item, index) in mt.items">
             <span v-if="!item[3]">
                 <input v-on:click="addToOrder" class="mini-checkbox" value="+" type="button" :id="(gid+1)*10000+(index+1)*100"/><label :for="(gid+1)*10000+(index+1)*100">{{ item[0] }}</label>
             </span>
@@ -73,9 +73,11 @@
           </div>
       </div>
     </div>
-    <mt-button @click.native="exportWord">导出Word</mt-button>
-    <mt-button @click.native="exportExcel">导出Excel</mt-button>
-    <mt-button @click.native="exportCSV">导出CSV</mt-button>
+    <mt-button @click.native="exportWord">Word</mt-button>
+    <mt-button @click.native="exportExcel">Excel</mt-button>
+    <!-- <mt-button @click.native="exportCSV">CSV</mt-button> -->
+    <input id="etSearch" placeholder="搜索" style="width:40pt;height:20pt;padding-top:0px;padding-bottom:0px;line-height:20pt;border:solid 1px #666;" />
+    <img onclick="searchMenu(document.getElementById('etSearch').value)" src="search.png" style="border:solid 1px #666;border-left:0px; margin-left:-4pt;width:20pt;height:20pt;margin-bottom: -7pt;"/>
     <mt-actionsheet :actions="addActions" v-model="sheetVisible"></mt-actionsheet></mt-actionsheet>
   </div>
 </body>
@@ -83,6 +85,7 @@
   <script src="vue.js"></script>
   <script src="index.js"></script>
   <script>
+    var currentSearchIndex = -1;
     var selectItemId = null;
     //名称，价格，辣度，选项
     let MENUS =[
@@ -514,6 +517,30 @@
       }
     });
 
+    function searchMenu(val){
+      currentSearchIndex += 1;
+      //搜索id
+      var count = 0;
+      for(var i=0; i<MENUS.length; i++){
+        var find = false;
+        for(var j=0; j<MENUS[i].items.length; j++){
+          if(MENUS[i].items[j][0].indexOf(val)>=0){
+            count += 1;
+            if(count==currentSearchIndex){
+              window.location.href="#"+((i+1)*10000+(j+1)*100);
+              selectText(""+((i+1)*10000+(j+1)*100));
+              find = true;
+              break;
+            }
+          }
+        }
+        if(find) break;
+      }
+      if(currentSearchIndex>count){
+        currentSearchIndex = 0;
+      }
+    }
+
     document.getElementById("div_table").onscroll = function(e){
         document.getElementById("div_header").scrollLeft = this.scrollLeft;
         document.getElementById("div_price").scrollLeft = this.scrollLeft;
@@ -530,5 +557,22 @@
       var blob = new Blob([format(template, ctx)], {type: "application/vnd.ms-excel;charset=utf-8"});
       saveAs(blob, "menu.xls");
     }
+
+    function selectText(element) {
+      var doc = document;
+      var text = doc.getElementById(element);    
+
+      if (doc.body.createTextRange) { // ms
+          var range = doc.body.createTextRange();
+          range.moveToElementText(text);
+          range.select();
+      } else if (window.getSelection) { // moz, opera, webkit
+          var selection = window.getSelection();            
+          var range = doc.createRange();
+          range.selectNodeContents(text);
+          selection.removeAllRanges();
+          selection.addRange(range);
+      }
+  }
   </script>
 </html>
