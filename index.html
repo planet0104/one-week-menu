@@ -73,7 +73,8 @@
           </div>
       </div>
     </div>
-    <mt-button @click.native="handleClick">导出CSV表格</mt-button>
+    <mt-button @click.native="exportCSV">导出CSV</mt-button>
+    <mt-button @click.native="exportWord">导出Word</mt-button>
     <mt-actionsheet :actions="addActions" v-model="sheetVisible"></mt-actionsheet></mt-actionsheet>
   </div>
 </body>
@@ -383,7 +384,54 @@
           selectItemId = event.target.id;
           this.$data.sheetVisible = true;
         },
-        handleClick: function() {
+        exportWord: function(){
+          var content = "<html xmlns:v=\"urn:schemas-microsoft-com:vml\" xmlns:o=\"urn:schemas-microsoft-com:office:office\" xmlns:x=\"urn:schemas-microsoft-com:office:word\" xmlns=\"http://www.w3.org/TR/REC-html40\"><head></head><body>";
+          var content = "<table style=\"\" border=\"1\" cellpadding=\"0\" cellspacing=\"0\" style=\"border-collapse:collapse;\"><tr>";
+          for(var i=0; i<vue.$data.table.th.length; i++){
+            content += "<th style=\"padding-left:5pt;padding-right:5pt;padding-top:3pt;padding-bottom:3pt;\">"+vue.$data.table.th[i]+"</th>"
+          }
+          content += "</tr>";
+          for(var i=0; i<15; i++){
+            var line = "<tr>";
+            var item = vue.$data.table.tr[i];
+            var emptyCount = 0;
+            for(var col=0; col<item.length; col++){
+              var name = vue.$data.table.tr[i][col].split("_")[0].split('￥')[0];
+              if(name=='-'){
+                emptyCount += 1;
+                line += "<td></td>";
+              }else{
+                line += "<td style=\"padding-left:5pt;padding-right:5pt;padding-top:3pt;padding-bottom:3pt;\">"+name+"</td>";
+              }
+            }
+            line += "</tr>";
+            if(emptyCount != vue.$data.table.th.length){
+              content += line;
+            }
+          }
+          
+          //计算每一行的价格
+          content += "<tr>";
+          for(var day=0;day<vue.$data.table.th.length; day++){
+            var total_price = 0;
+            for(var i=0; i<15; i++){
+              var item = vue.$data.table.tr[i][day];
+              if(item != '-'){
+                var id = parseInt(item.split('_')[3]);
+                let group_id = parseInt(id/10000);
+                let item_id = parseInt((id%10000)/100);
+                let type_id = (id%10000)%100;
+                total_price += parseInt(MENUS[group_id-1].items[item_id-1][1]);
+              }
+            }
+            content += "<td style=\"padding-left:5pt;padding-right:5pt;padding-top:3pt;padding-bottom:3pt;\">￥"+total_price+'</td>';
+          }
+          content += "</tr></table></body></html>";          
+          // console.log("content", content);
+          var blob = new Blob([content], {type: "application/msword;charset=utf-8"});
+          saveAs(blob, "menu.doc");
+        },
+        exportCSV: function() {
           var content = "星期一,星期二,星期三,星期四,星期五,星期六,星期日\n";
           for(var i=0; i<15; i++){
             var line = "";
@@ -410,7 +458,7 @@
                 total_price += parseInt(MENUS[group_id-1].items[item_id-1][1]);
               }
             }
-            content += total_price+',';
+            content += '￥'+total_price+',';
           }
 
           // console.log("content", content);
